@@ -6,14 +6,14 @@ class ApiService {
   final String baseUri = "https://jsonplaceholder.typicode.com/posts/";
 
 
-Future<Post> getPost(int id) async{
-  try{
-    Response response = await get(Uri.parse("$baseUri$id"));
-    Map <String, dynamic> data = jsonDecode(response.body);
-   return Post.fromJson(data);
-  }catch(e){
-    print('you have an error: $e');
-    rethrow;
+Future<List<Post>> getPost() async{
+    Response response = await get(Uri.parse("$baseUri"));
+  if(response.statusCode ==200){
+   List<dynamic> data = jsonDecode(response.body);
+   return data.map((item)=> Post.fromJson(item)).toList();
+  }else{
+    throw Exception('Failed to get Post');
   }
+ 
 }
 }
