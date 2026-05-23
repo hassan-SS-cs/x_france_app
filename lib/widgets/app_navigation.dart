@@ -26,10 +26,6 @@ AccountPage(),
   @override
   Widget build(BuildContext context) {
     return  Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text('site'),
-      ),
         body:Row(
           children: [
             if (MediaQuery.of(context).size.width >=640 )
