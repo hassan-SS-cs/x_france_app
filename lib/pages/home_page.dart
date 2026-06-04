@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:x_french/pages/home_viewmodel.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:x_french/models/post.dart';
@@ -12,7 +13,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final HomeViewModel _homeViewModel = HomeViewModel();
   Post? selectedPost;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,19 +29,22 @@ class _HomePageState extends State<HomePage> {
                 if (_homeViewModel.isLoading) {
                   return Center(child: CircularProgressIndicator());
                 }
-
-                return Container(
-                  color: const Color.fromARGB(255, 250, 250, 250),
-                  child: MasonryGridView.builder(
-                    gridDelegate:
-                        SliverSimpleGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                        ),
-                    itemCount: _homeViewModel.posts.length,
-                    itemBuilder: (context, i) {
-                      final post = _homeViewModel.posts[i];
-                      return Card(
-                        color: const Color.fromARGB(255, 255, 255, 255),
+                return MasonryGridView.builder(
+                  gridDelegate: SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                  ),
+                  itemCount: _homeViewModel.posts.length,
+                  itemBuilder: (context, i) {
+                    final post = _homeViewModel.posts[i];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: post.title == selectedPost?.title
+                            ? const Color.fromARGB(255, 223, 223, 223)
+                            : const Color.fromARGB(255, 255, 255, 255),
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                      child: Card(
+                        elevation: 2,
                         child: GestureDetector(
                           onTap: () {
                             setState(() {
@@ -53,6 +56,12 @@ class _HomePageState extends State<HomePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Image.network(
+                                  _homeViewModel.posts[i].imageUrl,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                                SizedBox(height: 10),
                                 Text(
                                   _homeViewModel.posts[i].title,
                                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -61,26 +70,25 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ),
-          VerticalDivider(width: 1),
           Expanded(
             flex: 3,
             child: selectedPost == null
-                ? ColoredBox(
+                ? Container(
+                    width: double.infinity,
                     color: Colors.white,
-                    child: Center(
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Image.network(
+                          Image.asset(
                             'assets/Welcome_img.png',
-                            width: 300,
-                            height: 300,
                             fit: BoxFit.cover,
                           ),
                           Text(
@@ -92,55 +100,90 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                    ),
                   )
-                : Padding(
-                    padding: EdgeInsets.all(24),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Align(
-                            alignment: Alignment.topLeft,
-                            child: IconButton(
-                              icon: Icon(Icons.close),
-                              onPressed: () {
-                                setState(() {
-                                  selectedPost = null;
-                                });
-                              },
-                            ),
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: IconButton(
+                            icon: Icon(Icons.close),
+                            onPressed: () {
+                              setState(() {
+                                selectedPost = null;
+                              });
+                            },
                           ),
-
-                          SizedBox(height: 60),
-                          Image.network(
-                            selectedPost!.imageUrl,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                          SizedBox(height: 20),
-                          Text(
-                            selectedPost!.title,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 30),
-                          Row(
-                            spacing: 10,
+                        ),
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+                          child: Column(
                             children: [
-                              Text(selectedPost!.userId),
-                              Text(selectedPost!.datetime),
+                              SizedBox(height: 60),
+                              Image.network(
+                                selectedPost!.imageUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                              SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      selectedPost!.title,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy),
+                                    tooltip: 'Copy title',
+                                    onPressed: () {
+                                      Clipboard.setData(
+                                        ClipboardData(
+                                          text: selectedPost!.title,
+                                        ),
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Copied!',
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10),
+                              Row(
+                                spacing: 10,
+                                children: [
+                                  Expanded(child: Text(selectedPost!.userId)),
+                                  Expanded(child: Text(selectedPost!.datetime)),
+                                ],
+                              ),
+                              SizedBox(height: 50),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      selectedPost!.body,
+                                      style: TextStyle(fontSize: 14),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                          SizedBox(height: 50),
-                          Text(
-                            selectedPost!.body,
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
           ),
