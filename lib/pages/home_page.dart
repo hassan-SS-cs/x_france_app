@@ -13,16 +13,23 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final HomeViewModel _homeViewModel = HomeViewModel();
   Post? selectedPost;
+  bool isSwapped = false;
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Posts', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-      body: Row(
-        children: [
-          Expanded(
-            flex: 2,
+    final listPanel = Expanded(
+      flex: 2,
+      child: DragTarget(
+        onAcceptWithDetails: (details) {
+          if (details.data == "details") {
+            setState(() {
+              isSwapped = !isSwapped;
+            });
+          }
+        },
+        builder: (context, candidateData, rejectedData) {
+          return Draggable(
+            data: "list",
+            feedback: Container(child: Text('List Panel'),),
             child: ListenableBuilder(
               listenable: _homeViewModel,
               builder: (context, child) {
@@ -30,9 +37,10 @@ class _HomePageState extends State<HomePage> {
                   return Center(child: CircularProgressIndicator());
                 }
                 return MasonryGridView.builder(
-                  gridDelegate: SliverSimpleGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                  ),
+                  gridDelegate:
+                      SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                      ),
                   itemCount: _homeViewModel.posts.length,
                   itemBuilder: (context, i) {
                     final post = _homeViewModel.posts[i];
@@ -64,7 +72,9 @@ class _HomePageState extends State<HomePage> {
                                 SizedBox(height: 10),
                                 Text(
                                   _homeViewModel.posts[i].title,
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),
@@ -76,30 +86,46 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-          ),
-          Expanded(
-            flex: 3,
+          );
+        },
+      ),
+    );
+
+    final detailPanel = Expanded(
+      flex: 3,
+      child: DragTarget(
+        onAcceptWithDetails: (details) {
+          if (details.data == "list") {
+            setState(() {
+              isSwapped = !isSwapped;
+            });
+          }
+        },
+        builder: (context, candidateData, rejectedData) {
+          return Draggable(
+            data: 'details',
+            feedback: Container(child: Text('details Panel'),),
             child: selectedPost == null
                 ? Container(
                     width: double.infinity,
                     color: Colors.white,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/Welcome_img.png',
-                            fit: BoxFit.cover,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/Welcome_img.png',
+                          fit: BoxFit.cover,
+                        ),
+                        Text(
+                          'Welcome To France',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            'Welcome To France',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
                   )
                 : SingleChildScrollView(
                     child: Column(
@@ -147,14 +173,10 @@ class _HomePageState extends State<HomePage> {
                                           text: selectedPost!.title,
                                         ),
                                       );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            'Copied!',
-                                          ),
-                                          duration: const Duration(seconds: 2),
+                                          content: Text('Copied!'),
+                                          duration: Duration(seconds: 2),
                                         ),
                                       );
                                     },
@@ -163,7 +185,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               SizedBox(height: 10),
                               Row(
-                                spacing: 10,
+                                spacing: 1,
                                 children: [
                                   Expanded(child: Text(selectedPost!.userId)),
                                   Expanded(child: Text(selectedPost!.datetime)),
@@ -178,6 +200,21 @@ class _HomePageState extends State<HomePage> {
                                       style: TextStyle(fontSize: 14),
                                     ),
                                   ),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy),
+                                    tooltip: 'Copy title',
+                                    onPressed: () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: selectedPost!.body),
+                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Copied!'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ],
@@ -186,8 +223,19 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-          ),
-        ],
+          );
+        },
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Posts', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: Row(
+        children: isSwapped
+            ? [detailPanel, listPanel]
+            : [listPanel, detailPanel],
       ),
     );
   }
