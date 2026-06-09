@@ -7,8 +7,14 @@ import 'package:x_french/models/post.dart';
 class HomePage extends StatefulWidget {
   final List<Post> favorites;
   final Function(List<Post>) onChanged;
+  final bool isLoggedIn;
 
-  const HomePage({required this.favorites, required this.onChanged, super.key});
+  const HomePage({
+    required this.favorites,
+    required this.onChanged,
+    required this.isLoggedIn,
+    super.key,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -68,7 +74,7 @@ class _HomePageState extends State<HomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Image.network(
-                                  _homeViewModel.posts[i].imageUrl,
+                                _homeViewModel.posts[i].imageUrl,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                 ),
@@ -137,32 +143,38 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Align(
-                              alignment: Alignment.topLeft,
-                              child: IconButton(
-                                icon: Icon(Icons.close),
-                                onPressed: () {
-                                  setState(() {
-                                    selectedPost = null;
-                                  });
-                                },
-                              ),
+                            IconButton(
+                              icon: Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  selectedPost = null;
+                                });
+                              },
                             ),
                             IconButton(
                               icon: Icon(
                                 widget.favorites.any(
                                       (f) => f.title == selectedPost!.title,
                                     )
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                                    ? Icons.star
+                                    : Icons.star_border,
                                 color:
                                     widget.favorites.any(
                                       (f) => f.title == selectedPost!.title,
                                     )
-                                    ? Colors.red
+                                    ? Colors.yellow
                                     : null,
                               ),
                               onPressed: () {
+                                if (!widget.isLoggedIn) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Please sign in'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
                                 setState(() {
                                   final updated = [...widget.favorites];
                                   widget.favorites.any(
@@ -240,7 +252,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.copy),
-                                    tooltip: 'Copy title',
+                                    tooltip: 'Copy body',
                                     onPressed: () {
                                       Clipboard.setData(
                                         ClipboardData(text: selectedPost!.body),
