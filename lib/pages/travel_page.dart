@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:gal/gal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Attraction {
@@ -63,6 +66,39 @@ final List<Attraction> attractions = [
   ),
 ];
 
+class DrawnLine {
+  final List<Offset> points;
+  DrawnLine(this.points);
+}
+
+class MapPainter extends CustomPainter {
+  final List<DrawnLine> lines;
+  final List<Offset> currentLine;
+
+  MapPainter({required this.lines, required this.currentLine});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (final line in lines) {
+      for (int i = 0; i < line.points.length - 1; i++) {
+        canvas.drawLine(line.points[i], line.points[i + 1], paint);
+      }
+    }
+    for (int i = 0; i < currentLine.length - 1; i++) {
+      canvas.drawLine(currentLine[i], currentLine[i + 1], paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(MapPainter oldDelegate) => true;
+}
+
 class TravelPage extends StatefulWidget {
   const TravelPage({super.key});
 
@@ -71,6 +107,45 @@ class TravelPage extends StatefulWidget {
 }
 
 class _TravelPageState extends State<TravelPage> {
+  final GlobalKey _repaintKey = GlobalKey();
+  bool _isDrawing = false;
+  final List<DrawnLine> _lines = [];
+  List<Offset> _currentLine = [];
+
+  void _onPanStart(DragStartDetails details) {
+    if (!_isDrawing) return;
+    setState(() => _currentLine = [details.localPosition]);
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (!_isDrawing) return;
+    setState(() => _currentLine.add(details.localPosition));
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (!_isDrawing) return;
+    setState(() {
+      _lines.add(DrawnLine(List.from(_currentLine)));
+      _currentLine = [];
+    });
+  }
+
+  Future<void> _saveImage() async {
+    final boundary =
+        _repaintKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (boundary == null) return;
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    final bytes = byteData!.buffer.asUint8List();
+    await Gal.putImageBytes(bytes);
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Map saved to gallery!')));
+    }
+  }
+
   void _showAttractionDialog(Attraction attraction) {
     showDialog(
       context: context,
@@ -196,45 +271,71 @@ class _TravelPageState extends State<TravelPage> {
           'Popular Locations',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final mapWidth = constraints.maxWidth;
-          final mapHeight = constraints.maxHeight;
-
-          return InteractiveViewer(
-            minScale: 1.0,
-            maxScale: 5.0,
-            child: SizedBox(
-              width: mapWidth,
-              height: mapHeight,
-              child: Stack(
-                children: [
-                  Image.asset(
-                    'assets/france_map.png',
-                    width: mapWidth,
-                    height: mapHeight,
-                    fit: BoxFit.cover,
-                  ),
-                  ...attractions.map((attraction) {
-                    return Positioned(
-                      left: attraction.dx * mapWidth - 16,
-                      top: attraction.dy * mapHeight - 16,
-                      child: GestureDetector(
-                        onTap: () => _showAttractionDialog(attraction),
-                        child: Icon(
-                          Icons.location_on,
-                          color: Colors.red,
-                          size: 32,
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.draw,
+              color: _isDrawing ? Colors.blue : Colors.black,
             ),
-          );
-        },
+            onPressed: () => setState(() => _isDrawing = !_isDrawing),
+          ),
+          IconButton(icon: Icon(Icons.save), onPressed: _saveImage),
+        ],
+      ),
+      body: RepaintBoundary(
+        key: _repaintKey,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final mapWidth = constraints.maxWidth;
+            final mapHeight = constraints.maxHeight;
+
+            return InteractiveViewer(
+              panEnabled: !_isDrawing,
+              minScale: 1.0,
+              maxScale: 5.0,
+              child: SizedBox(
+                width: mapWidth,
+                height: mapHeight,
+                child: Stack(
+                  children: [
+                    Image.asset(
+                      'assets/france_map.png',
+                      width: mapWidth,
+                      height: mapHeight,
+                      fit: BoxFit.cover,
+                    ),
+                    GestureDetector(
+                      onPanStart: _onPanStart,
+                      onPanUpdate: _onPanUpdate,
+                      onPanEnd: _onPanEnd,
+                      child: CustomPaint(
+                        painter: MapPainter(
+                          lines: _lines,
+                          currentLine: _currentLine,
+                        ),
+                        size: Size(mapWidth, mapHeight),
+                      ),
+                    ),
+                    ...attractions.map((attraction) {
+                      return Positioned(
+                        left: attraction.dx * mapWidth - 16,
+                        top: attraction.dy * mapHeight - 16,
+                        child: GestureDetector(
+                          onTap: () => _showAttractionDialog(attraction),
+                          child: Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 32,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
