@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:x_french/services/api_service.dart';
 import 'package:x_french/models/post.dart';
+
 class HomeViewModel extends ChangeNotifier {
-ApiService apiService =ApiService();
+  ApiService apiService = ApiService();
 
-final List<Post> posts = [];
+  final List<Post> posts = [];
 
+  bool isLoading = true;
 
-bool isLoading =  true;
+  HomeViewModel() {
+    fetchPost();
+  }
 
-HomeViewModel(){
-  fetchPost();
-}
+  void fetchPost() async {
+    try {
+      debugPrint('Fetching posts...');
 
-void fetchPost()async {
-try{
-  debugPrint('Fetching posts...');
+      posts.addAll(await apiService.getPost());
 
- posts.addAll(await apiService.getPost());
+      isLoading = false;
 
- isLoading= false;
-
- notifyListeners();
-}catch(e){
-  debugPrint('Error fetching posts: $e');
-}
-}
-
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching posts: $e');
+    }
+  }
 }

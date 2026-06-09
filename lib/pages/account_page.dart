@@ -1,24 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:x_french/models/post.dart';
 
 class AccountPage extends StatefulWidget {
-  AccountPage({super.key});
-
+  final List<Post> favorites;
+  final bool isLoggedIn;
+  final String username;
+  final bool showForm;
+  final Function(bool, String, bool) onAuthChanged;
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+
+  AccountPage({
+    required this.favorites,
+    required this.isLoggedIn,
+    required this.username,
+    required this.showForm,
+    required this.onAuthChanged,
+    super.key,
+  });
 
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
 
 class _AccountPageState extends State<AccountPage> {
-  bool isLoggedIn = false;
   String emailError = '';
   String passwordError = '';
   RegExp emailRegex = RegExp(r'^[\w.-]+@[\w.-]+\.\w+$');
   RegExp passRegex = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d).{6,}$');
   bool showPassword = false;
-  bool showForm = false;
-  String username = '';
+  final _player = AudioPlayer();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,16 +44,16 @@ class _AccountPageState extends State<AccountPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  SizedBox(height: 50,),
+                  SizedBox(height: 50),
                   Icon(
                     Icons.account_circle_outlined,
                     size: 100,
                     color: Colors.black,
                   ),
                   SizedBox(height: 20),
-                  isLoggedIn
+                  widget.isLoggedIn
                       ? Text(
-                          username,
+                          widget.username,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
@@ -47,7 +61,7 @@ class _AccountPageState extends State<AccountPage> {
                         )
                       : SizedBox(),
                   SizedBox(height: 10),
-                  isLoggedIn
+                  widget.isLoggedIn
                       ? OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black,
@@ -56,13 +70,8 @@ class _AccountPageState extends State<AccountPage> {
                               borderRadius: BorderRadius.zero,
                             ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              isLoggedIn = false;
-                              showForm = false;
-                              username = '';
-                            });
-                          },
+                          onPressed: () =>
+                              widget.onAuthChanged(false, '', false),
                           child: Text(
                             'Sign out',
                             style: TextStyle(
@@ -79,7 +88,8 @@ class _AccountPageState extends State<AccountPage> {
                               borderRadius: BorderRadius.zero,
                             ),
                           ),
-                          onPressed: () => setState(() => showForm = true),
+                          onPressed: () =>
+                              widget.onAuthChanged(false, '', true),
                           child: Text(
                             'Join us Now',
                             style: TextStyle(
@@ -89,17 +99,100 @@ class _AccountPageState extends State<AccountPage> {
                           ),
                         ),
                   SizedBox(height: 10),
-                  isLoggedIn
+                  widget.isLoggedIn
                       ? Text('to change the other account')
                       : Text('to discover more sight of France'),
                 ],
               ),
             ),
             Expanded(
-              child: showForm == false
-                  ? Container()
-                  : isLoggedIn == false
+              child: widget.isLoggedIn
                   ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'My Favorites',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: widget.favorites.reversed
+                                .toList()
+                                .length,
+                            itemBuilder: (context, i) {
+                              final post = widget.favorites.reversed
+                                  .toList()[i];
+                              return Card(
+                                margin: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              post.title,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              post.userId,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            Text(
+                                              post.datetime,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            SizedBox(height: 6),
+                                            Text(
+                                              post.body,
+                                              maxLines: 4,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: 13),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Image.network(
+                                        post.imageUrl,
+                                        width: 80,
+                                        height: 80,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  : widget.showForm == false
+                  ? Container()
+                  : Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         SizedBox(height: 150),
@@ -169,12 +262,10 @@ class _AccountPageState extends State<AccountPage> {
                                 ),
                               ),
                               suffixIcon: GestureDetector(
-                                onLongPressStart: (_) {
-                                  setState(() => showPassword = true);
-                                },
-                                onLongPressEnd: (_) {
-                                  setState(() => showPassword = false);
-                                },
+                                onLongPressStart: (_) =>
+                                    setState(() => showPassword = true),
+                                onLongPressEnd: (_) =>
+                                    setState(() => showPassword = false),
                                 child: Icon(Icons.remove_red_eye),
                               ),
                             ),
@@ -203,12 +294,18 @@ class _AccountPageState extends State<AccountPage> {
                             ),
                           ),
                           onPressed: () {
-                            setState(() {
-                              username = widget.emailController.text.split(
-                                '@',
-                              )[0];
-                              isLoggedIn = true;
-                            });
+                            if (emailError.isNotEmpty ||
+                                passwordError.isNotEmpty)
+                              return;
+                            if (widget.emailController.text.isEmpty ||
+                                widget.passwordController.text.isEmpty)
+                              return;
+                            widget.onAuthChanged(
+                              true,
+                              widget.emailController.text.split('@')[0],
+                              true,
+                            );
+                            _player.play(AssetSource('Success.mp3'));
                           },
                           child: Text(
                             'Sign in/up',
@@ -218,11 +315,25 @@ class _AccountPageState extends State<AccountPage> {
                             ),
                           ),
                         ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            final url = Uri.parse(
+                              'https://www.apple.com/legal/privacy/',
+                            );
+                            await launchUrl(
+                              url,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          },
+                          child: Text(
+                            'READ USER AGREEMENT',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.blue,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
             ),
