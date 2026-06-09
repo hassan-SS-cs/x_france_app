@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:x_french/pages/home_viewmodel.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:x_french/models/post.dart';
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final List<Post> favorites;
+  final Function(List<Post>) onChanged;
+
+  const HomePage({required this.favorites, required this.onChanged, super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -29,7 +33,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context, candidateData, rejectedData) {
           return Draggable(
             data: "list",
-            feedback: Container(child: Text('List Panel'),),
+            feedback: Container(child: Text('List Panel')),
             child: ListenableBuilder(
               listenable: _homeViewModel,
               builder: (context, child) {
@@ -37,10 +41,9 @@ class _HomePageState extends State<HomePage> {
                   return Center(child: CircularProgressIndicator());
                 }
                 return MasonryGridView.builder(
-                  gridDelegate:
-                      SliverSimpleGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                      ),
+                  gridDelegate: SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                  ),
                   itemCount: _homeViewModel.posts.length,
                   itemBuilder: (context, i) {
                     final post = _homeViewModel.posts[i];
@@ -72,9 +75,7 @@ class _HomePageState extends State<HomePage> {
                                 SizedBox(height: 10),
                                 Text(
                                   _homeViewModel.posts[i].title,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -104,7 +105,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context, candidateData, rejectedData) {
           return Draggable(
             data: 'details',
-            feedback: Container(child: Text('details Panel'),),
+            feedback: Container(child: Text('details Panel')),
             child: selectedPost == null
                 ? Container(
                     width: double.infinity,
@@ -113,9 +114,11 @@ class _HomePageState extends State<HomePage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/Welcome_img.png',
-                          fit: BoxFit.cover,
+                        Expanded(
+                          child: Image.asset(
+                            'assets/Welcome_img.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         Text(
                           'Welcome To France',
@@ -131,16 +134,49 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: IconButton(
-                            icon: Icon(Icons.close),
-                            onPressed: () {
-                              setState(() {
-                                selectedPost = null;
-                              });
-                            },
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: IconButton(
+                                icon: Icon(Icons.close),
+                                onPressed: () {
+                                  setState(() {
+                                    selectedPost = null;
+                                  });
+                                },
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                widget.favorites.any(
+                                      (f) => f.title == selectedPost!.title,
+                                    )
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color:
+                                    widget.favorites.any(
+                                      (f) => f.title == selectedPost!.title,
+                                    )
+                                    ? Colors.red
+                                    : null,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  final updated = [...widget.favorites];
+                                  widget.favorites.any(
+                                        (f) => f.title == selectedPost!.title,
+                                      )
+                                      ? updated.removeWhere(
+                                          (f) => f.title == selectedPost!.title,
+                                        )
+                                      : updated.add(selectedPost!);
+                                  widget.onChanged(updated);
+                                });
+                              },
+                            ),
+                          ],
                         ),
                         Padding(
                           padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
@@ -173,7 +209,9 @@ class _HomePageState extends State<HomePage> {
                                           text: selectedPost!.title,
                                         ),
                                       );
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text('Copied!'),
                                           duration: Duration(seconds: 2),
@@ -207,7 +245,9 @@ class _HomePageState extends State<HomePage> {
                                       Clipboard.setData(
                                         ClipboardData(text: selectedPost!.body),
                                       );
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text('Copied!'),
                                           duration: Duration(seconds: 2),
