@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:x_french/models/post.dart';
 
 class AccountPage extends StatefulWidget {
@@ -32,6 +32,35 @@ class _AccountPageState extends State<AccountPage> {
   RegExp passRegex = RegExp(r'^(?=.*[a-zA-Z])(?=.*\d).{6,}$');
   bool showPassword = false;
   final _player = AudioPlayer();
+
+  void _openWebViewDialog(BuildContext context) {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse('https://www.apple.com/legal/privacy/'));
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.all(16),
+        child: SizedBox(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.85,
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              Expanded(child: WebViewWidget(controller: controller)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +131,31 @@ class _AccountPageState extends State<AccountPage> {
                   widget.isLoggedIn
                       ? Text('to change the other account')
                       : Text('to discover more sight of France'),
+                  SizedBox(height: 20),
+                  widget.isLoggedIn
+                      ? Container(
+                          width: 120,
+                          padding: EdgeInsets.symmetric(
+                            vertical: 16,
+                            horizontal: 20,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black, width: 1),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '${widget.favorites.length}',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text('Favorites', style: TextStyle(fontSize: 14)),
+                            ],
+                          ),
+                        )
+                      : SizedBox(),
                 ],
               ),
             ),
@@ -294,12 +348,28 @@ class _AccountPageState extends State<AccountPage> {
                             ),
                           ),
                           onPressed: () {
-                            if (emailError.isNotEmpty ||
-                                passwordError.isNotEmpty)
-                              return;
                             if (widget.emailController.text.isEmpty ||
-                                widget.passwordController.text.isEmpty)
+                                widget.passwordController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Please fill in all fields.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
                               return;
+                            }
+                            if (emailError.isNotEmpty ||
+                                passwordError.isNotEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Sign in failed. Check your email or password.',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
                             widget.onAuthChanged(
                               true,
                               widget.emailController.text.split('@')[0],
@@ -316,15 +386,7 @@ class _AccountPageState extends State<AccountPage> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () async {
-                            final url = Uri.parse(
-                              'https://www.apple.com/legal/privacy/',
-                            );
-                            await launchUrl(
-                              url,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          },
+                          onPressed: () => _openWebViewDialog(context),
                           child: Text(
                             'READ USER AGREEMENT',
                             style: TextStyle(

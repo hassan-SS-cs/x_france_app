@@ -20,6 +20,7 @@ class _AppNavigationState extends State<AppNavigation> {
     HomePage(
       favorites: favorites,
       onChanged: (updated) => setState(() => favorites = updated),
+      isLoggedIn: isLoggedIn,
     ),
     TravelPage(),
     AccountPage(
